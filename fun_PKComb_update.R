@@ -20,7 +20,7 @@ fun_PKComb_update <- function(cid, CV, g_P, patDT, doseDT, current_jk,
   #         ESS_t, ESS_e, pi_t_hat, pi_e_hat, x_d, r_d, r_sd
   # patDT: patient-level data.frame
   
-  require(truncnorm)
+  #require(truncnorm)
   dN <- nrow(doseDT)
   j_cur <- current_jk[1]; k_cur <- current_jk[2]
   # Find row index in doseDT for current combination

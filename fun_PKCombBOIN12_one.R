@@ -12,8 +12,8 @@
 ##         (e.g., Scenarios 13 and 17).
 ###############################################################################
 PKCombBOIN12_one <- function(doseDT, current_jk, pT, qE, J, K,
-                             lambda_e, lambda_d, zeta1, N_star,
-                             csize, decisionM, ub, u11, u00) {
+                             lambda_e, lambda_d, zeta1, cutoff_pk,
+                             N_star, csize, decisionM, ub, u11, u00) {
 
   j <- current_jk[1]; k <- current_jk[2]
   idx_cur <- which(doseDT$j == j & doseDT$k == k)
@@ -75,7 +75,7 @@ PKCombBOIN12_one <- function(doseDT, current_jk, pT, qE, J, K,
   ## The elimination should be consistent: eliminate only when we are
   ## confident the dose's PK is below zeta1.
   if (n >= 6 && doseDT$r_sd[idx_cur] > 0) {
-    pk_elim <- pnorm(zeta1, mean = rhat, sd = doseDT$r_sd[idx_cur] / sqrt(n)) > 0.95
+    pk_elim <- pnorm(zeta1, mean = rhat, sd = doseDT$r_sd[idx_cur] / sqrt(n)) > cutoff_pk#0.95
 
     if (pk_elim) {
       if (j == J && k == K) {
@@ -154,4 +154,31 @@ PKCombBOIN12_one <- function(doseDT, current_jk, pT, qE, J, K,
   }
   best_i <- which.max(posts)
   return(list(doseDT = doseDT, newdose = valid[[best_i]]))
+}
+
+
+fun_coherence=function(patDT,cohort_num,decision,current_jk,csize)
+{
+  cohere<-NULL
+  total_tox_cohort<-patDT%>%filter(cid==cohort_num)%>%
+    summarise(Tox=sum(toxobs))%>%pull(Tox)
+  
+  if(total_tox_cohort%in%c(0,csize))
+  {
+    if(total_tox_cohort==csize) #All DLT
+    {
+      cohere<- ifelse((((decision$newdose[1]-current_jk[1])>=1) |
+                         ((decision$newdose[2]-current_jk[2])>=1)),1,0) #escalation
+    }
+    if(total_tox_cohort==0) #No DLT
+    {
+      cohere<- ifelse((((decision$newdose[1]-current_jk[1])<=-1) |
+                         ((decision$newdose[2]-current_jk[2])<=-1)),1,0) #de-escalation
+    }
+  }
+  else #Non extreme case
+  {
+    cohere=NA
+  }
+  return(cohere)
 }

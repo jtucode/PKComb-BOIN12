@@ -3,10 +3,10 @@
 ## Identify the true OBDC in a J x K dose matrix using RDS utility
 ###############################################################################
 
-findOBDC_RDS <- function(toxM, effM, pT, qE, u11, u00) {
+findOBDC_RDS <- function(toxM, effM, pkM, pT, qE, zeta1, u11, u00) {
   J <- nrow(toxM); K <- ncol(toxM)
   RDS <- matrix(NA, J, K)
-  admissible <- (toxM <= pT)
+  admissible <- ((toxM <= pT) & (pkM>=zeta1))
   for (j in 1:J) for (k in 1:K) {
     if (admissible[j, k]) {
       RDS[j, k] <- 100 * effM[j, k] * (1 - toxM[j, k]) +
@@ -19,4 +19,28 @@ findOBDC_RDS <- function(toxM, effM, pT, qE, u11, u00) {
   best <- which(RDS == max(RDS, na.rm = TRUE), arr.ind = TRUE)
   storage.mode(best) <- "integer"
   return(best)
+}
+
+fun_true_admissible=function(J,K,toxV,effV,pkV,pT,qE,zeta1)
+{
+  toxM <- matrix(toxV, nrow = J, ncol = K, byrow = TRUE)
+  effM <- matrix(effV, nrow = J, ncol = K, byrow = TRUE)
+  pkM  <- matrix(pkV,  nrow = J, ncol = K, byrow = TRUE)
+  true_admissible<-((toxM <= pT)&(effM >= qE)&(pkM>=zeta1))
+  return(true_admissible)
+}
+fun_true_utility=function(J,K,toxV,effV,pkV, u00, u11)
+{
+  toxM <- matrix(toxV, nrow = J, ncol = K, byrow = TRUE)
+  effM <- matrix(effV, nrow = J, ncol = K, byrow = TRUE)
+  pkM  <- matrix(pkV,  nrow = J, ncol = K, byrow = TRUE)
+  true_utility <- matrix(NA, J, K)
+  for (j in 1:J) for (k in 1:K) {
+    
+    true_utility[j, k] <- 100 * effM[j, k] * (1 - toxM[j, k]) +
+      u00 * (1 - toxM[j, k]) * (1 - effM[j, k]) +
+      u11 * toxM[j, k] * effM[j, k]
+    
+  }
+  return(true_utility)
 }

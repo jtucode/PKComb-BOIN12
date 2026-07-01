@@ -3,18 +3,18 @@
 ## Parallel wrapper for a single simulation replicate
 ###############################################################################
 
-fun_PKComb_core_para <- function(index, pkM, toxM, effM, J, K, trueOBDC,
+fun_PKComb_core_para <- function(index, pkM, toxM, effM, J, K, trueOBDC,true_admissible,
                                  decisionM, pT, qE, pqcorr, csize, cN, N_star,
-                                 lambda_d, lambda_e, zeta1, CV, g_P,
-                                 ub, u11, u00, current, doselimit,
+                                 lambda_d, lambda_e, zeta1,cutoff_pk,
+                                 CV, g_P,ub, u11, u00, current, doselimit,
                                  accrual, susp, tox_win, eff_win,
                                  tox_dist, eff_dist,
                                  use_susp, accrual_random, considerPK) {
   fun_PKCombBOIN12(
     index=index, pkM=pkM, toxM=toxM, effM=effM,
-    J=J, K=K, trueOBDC=trueOBDC,
+    J=J, K=K, trueOBDC=trueOBDC,true_admissible = true_admissible,
     pT=pT, qE=qE, pqcorr=pqcorr,
-    lambda_e=lambda_e, lambda_d=lambda_d, zeta1=zeta1,
+    lambda_e=lambda_e, lambda_d=lambda_d, zeta1=zeta1, cutoff_pk=cutoff_pk,
     CV=CV, g_P=g_P, csize=csize, cN=cN, N_star=N_star,
     decisionM=decisionM, ub=ub, u11=u11, u00=u00,
     current=current, doselimit=doselimit,

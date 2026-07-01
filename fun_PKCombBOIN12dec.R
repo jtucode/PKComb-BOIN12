@@ -21,6 +21,7 @@ fun_PKCombBOIN12dec <- function(pT, qE, lambda_e, lambda_d, csize, cN,
   result$E <- floor(result$n * lambda_e)
   
   for (i in 1:cN) {
+    #cutoff_tox<-ifelse(i<=1,0.85,cutoff_tox) #only for the first cohort
     # Toxicity elimination boundary
     if (1 - pbeta(pT, result$n[i] + 1, 1) >= cutoff_tox) {
       result$DU_T[i] <- min(which(

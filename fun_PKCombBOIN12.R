@@ -5,8 +5,8 @@
 ## v2: Adds elim_reason tracking (SAFETY / EFFICACY / PK / NA)
 ###############################################################################
 
-fun_PKCombBOIN12 <- function(index, pkM, toxM, effM, J, K, trueOBDC,
-                             pT, qE, pqcorr, lambda_e, lambda_d, zeta1,
+fun_PKCombBOIN12 <- function(index, pkM, toxM, effM, J, K, trueOBDC, true_admissible,
+                             pT, qE, pqcorr, lambda_e, lambda_d, zeta1, cutoff_pk,
                              CV, g_P, csize, cN, N_star, decisionM,
                              ub, u11 = 60, u00 = 40,
                              current = c(1, 1), doselimit = Inf,
@@ -41,6 +41,7 @@ fun_PKCombBOIN12 <- function(index, pkM, toxM, effM, J, K, trueOBDC,
 
   earlystop <- FALSE
   record_j <- record_k <- rep(-1, cN)
+  cohere<-rep(NA,cN)
   current_jk <- current
 
   for (i in 1:cN) {
@@ -58,10 +59,12 @@ fun_PKCombBOIN12 <- function(index, pkM, toxM, effM, J, K, trueOBDC,
     decision <- PKCombBOIN12_one(
       doseDT=doseDT, current_jk=current_jk,
       pT=pT, qE=qE, J=J, K=K,
-      lambda_e=lambda_e, lambda_d=lambda_d, zeta1=zeta1,
+      lambda_e=lambda_e, lambda_d=lambda_d, zeta1=zeta1,cutoff_pk=cutoff_pk,
       N_star=N_star, csize=csize, decisionM=decisionM,
       ub=ub, u11=u11, u00=u00
     )
+    
+    cohere[i]<-fun_coherence(patDT, i, decision, current_jk, csize)  #check coherence
     doseDT <- decision$doseDT
     record_j[i] <- current_jk[1]; record_k[i] <- current_jk[2]
     current_jk <- decision$newdose
@@ -85,13 +88,18 @@ fun_PKCombBOIN12 <- function(index, pkM, toxM, effM, J, K, trueOBDC,
   }
 
   if (!earlystop) {
-    OBDC <- fun_PKCombBOIN12_OBDC(doseDT_final, J, K, pT, u11, u00, zeta1)
+    Obtain_OBDC<-fun_PKCombBOIN12_OBDC(doseDT_final, J, K, pT, u11, u00, zeta1,true_admissible)
+    OBDC<- Obtain_OBDC$OBDC
     rN <- sum(doseDT_final$keep == 1 & doseDT_final$n > 0)
   } else {
-    OBDC <- c(99, 99); rN <- 0
+    OBDC <- c(99, 99); rN <- 0; Obtain_OBDC <- list(Addmissible_score=NA, Utility_vals =matrix(rep(NA, J*K), nrow=J, byrow=T))
   }
 
   ## Metrics
+  no_obdc_ind<-ifelse((OBDC[1]>J | OBDC[2]>K),1,0)
+  cohe<-ifelse(sum(!is.na(cohere))>=1,(1-(mean(cohere, na.rm=T))),1) #coherence
+  admissible_score<-ifelse(!is.na(Obtain_OBDC$Addmissible_score),
+    ifelse(sum(true_admissible)>0,ifelse(Obtain_OBDC$Addmissible_score>0,1,0),1),NA) #Admissibility
   ## trueOBDC is a matrix (n_obdc x 2); handle multiple tied OBDCs
   if (is.null(dim(trueOBDC))) trueOBDC <- matrix(trueOBDC, nrow = 1)
   no_obdc <- all(trueOBDC[1, ] < 0)
@@ -140,9 +148,21 @@ fun_PKCombBOIN12 <- function(index, pkM, toxM, effM, J, K, trueOBDC,
                             doseDT_final$elim_reason[idx])
   }
   names(elim_vec) <- paste0("elim_", rep(1:J, K), "_", rep(1:K, each = J))
+  
+  #utility values
+  u_vec<- numeric(J * K)
+  names(u_vec) <- paste0("u_", rep(1:K, each = J), "_", rep(1:J, K))
+  
+  for(jj in 1:J) for(kk in 1:K)
+  {
+    u_vec[paste("u_",jj,"_",kk,sep="")]<-Obtain_OBDC$Utility_vals[jj,kk]
+  }
 
   return(data.frame(
+    no_obdc = no_obdc_ind,
     earlystop = earlystop,
+    admissible_score=admissible_score,
+    coherence=cohe,
     OBDC_j = OBDC[1], OBDC_k = OBDC[2],
     rN = rN,
     trueOBDC_j = trueOBDC[1, 1], trueOBDC_k = trueOBDC[1, 2],
@@ -152,6 +172,7 @@ fun_PKCombBOIN12 <- function(index, pkM, toxM, effM, J, K, trueOBDC,
     num_overdose = num_overdose,
     duration = duration,
     t(n_vec),
-    t(elim_vec)
+    t(elim_vec),
+    t(u_vec)
   ))
 }
